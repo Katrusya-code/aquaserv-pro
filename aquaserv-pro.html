@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>AquaServ Pro</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #EFF6FF; font-family: 'DM Sans', system-ui, sans-serif; }
+    ::-webkit-scrollbar { display: none; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
+    .card { animation: fadeUp .22s ease both; }
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Space+Grotesk:wght@600;700&display=swap');
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useMemo } = React;
+
+const CAT = {
+  uv: {
+    label:"UV Unit", icon:"☀️", color:"#7C3AED", light:"#F3F0FF",
+    models:[
+      {id:"vh150",name:"VH150",unitCode:"1092698-VH150",services:[{key:"lamp",label:"Lamp Replacement",partCode:"1092699",partDesc:"S150RL-HO Lamp",interval:12}]},
+      {id:"vh200",name:"VH200",unitCode:"1075986",      services:[{key:"lamp",label:"Lamp Replacement",partCode:"1010188",partDesc:"S200RL-HO Lamp",interval:12}]},
+      {id:"vh410",name:"VH410",unitCode:"1016300",      services:[{key:"lamp",label:"Lamp Replacement",partCode:"1016308",partDesc:"S410RL-HO Lamp",interval:12}]},
+    ]},
+  uvkit:{label:"Integrated UV Kit",icon:"🔆",color:"#9333EA",light:"#FAF5FF",
+    models:[
+      {id:"uvkit5", name:"UV Kit 5gpm",  unitCode:"1092848",services:[{key:"filter",label:"Filter Cartridge",partCode:"1009839",partDesc:"5 Mic Filter Cartridge",interval:12},{key:"lamp",label:"UV Lamp",partCode:"1092699",partDesc:"S150RL-HO Lamp",interval:12}]},
+      {id:"uvkit75",name:"UV Kit 7.5gpm",unitCode:"1079723",services:[{key:"filter",label:"Filter Cartridge",partCode:"1009839",partDesc:"5 Mic Filter Cartridge",interval:12},{key:"lamp",label:"UV Lamp",partCode:"1010188",partDesc:"S200RL-HO Lamp",interval:12}]},
+      {id:"uvkit15",name:"UV Kit 15gpm", unitCode:"1201931",services:[{key:"filter",label:"Filter Cartridge",partCode:"1009840",partDesc:"5 Mic Filter Cartridge",interval:12},{key:"lamp",label:"UV Lamp",partCode:"1016308",partDesc:"S410RL-HO Lamp",interval:12}]},
+    ]},
+  ro:{label:"RO System",icon:"💧",color:"#0284C7",light:"#EFF8FF",
+    models:[
+      {id:"ecosoft5",  name:"ECOSOFT 5-Stage Pumped",       unitCode:"1009664",services:[{key:"f3",label:"3-Filter Pack (6mo)",partCode:"1012401",partDesc:"3-Filter Pack",interval:6},{key:"f2",label:"2-Filter Pack (12mo)",partCode:"1012400",partDesc:"2-Filter Pack",interval:12}]},
+      {id:"aplos5",    name:"APLOS Standard 5-Stage Pumped", unitCode:"1198362",services:[{key:"f3",label:"3-Filter Pack (6mo)",partCode:"1198884",partDesc:"APLOS 3-Filter Pack",interval:6},{key:"f2",label:"2-Filter Pack (12mo)",partCode:"1198885",partDesc:"APLOS 2-Filter Pack",interval:12}]},
+      {id:"aplosangel",name:"APLOS Angel Direct Flow",       unitCode:"1197694",services:[{key:"cfiii",label:"CFIII Cartridge",partCode:"1199479",partDesc:"CFIII Cartridge",interval:12},{key:"membrane",label:"600GPD Membrane",partCode:"1199480",partDesc:"APLOS Angel 600GPD Membrane",interval:18,note:"Unit signals when change needed (12–24 months)"}]},
+    ]},
+  softener:{label:"Water Softener",icon:"🫧",color:"#059669",light:"#F0FDF4",
+    groups:[
+      {g:"esoft ECO (Cabinet)",k:"esoftECO",sizes:["8L","10L","20L","30L"]},
+      {g:"esoft PRO (Cabinet)",k:"esoftPRO",sizes:["8L","10L","20L","30L"]},
+      {g:"AquaSilk (Cabinet)", k:"aquaSilk",sizes:["8L","14L","21L"]},
+      {g:"Simplex",            k:"simplex", sizes:["30L","40L","50L","60L","75L"]},
+      {g:"Ecomix A",           k:"ecomixA", sizes:["25L","37L","62L","75L"]},
+      {g:"Ecomix C",           k:"ecomixC", sizes:["25L","37L","62L","75L"]},
+    ],
+    get models(){return this.groups.flatMap(({g,k,sizes})=>sizes.map(s=>({id:`${k}_${s}`,name:`${g} ${s}`,unitCode:`SOFT-${k.toUpperCase()}-${s}`})));},
+  },
+  ph:{label:"pH Correction",icon:"⚗️",color:"#B45309",light:"#FFFBEB",
+    groups:[
+      {g:"Juraperle & Corosex Mix",models:[{id:"phmix13",name:"PH-Mix 1.3",unitCode:"1013262"},{id:"phmix15",name:"PH-Mix 1.5",unitCode:"1013263"},{id:"phmix25",name:"PH-Mix 2.5",unitCode:"1013264"},{id:"phmix30",name:"PH-Mix 3.0",unitCode:"1015975"}]},
+      {g:"Juraperle Only",          models:[{id:"ph13",name:"PH-1.3",unitCode:"1036208"},{id:"ph15",name:"PH-1.5",unitCode:"1036210"},{id:"ph25",name:"PH-2.5",unitCode:"1036906"}]},
+    ],
+    get models(){return this.groups.flatMap(g=>g.models.map(m=>({...m,group:g.g})));},
+    services:[{key:"service",label:"Annual Service",partCode:"—",partDesc:"pH Media Top-up / Annual Service",interval:12}],
+  },
+};
+
+function findModel(type,id){return CAT[type]?.models?.find(m=>m.id===id)||null;}
+function addMo(d,m){const r=new Date(d);r.setMonth(r.getMonth()+m);return r;}
+function dTo(d){const t=new Date();t.setHours(0,0,0,0);const u=new Date(d);u.setHours(0,0,0,0);return Math.round((u-t)/86400000);}
+function fmt(d){return new Date(d).toLocaleDateString("en-IE",{day:"numeric",month:"short",year:"numeric"});}
+function stOf(n){if(n<0)return"overdue";if(n<=14)return"urgent";if(n<=90)return"soon";return"ok";}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+const ST={
+  overdue:{bg:"#FEE2E2",border:"#FCA5A5",text:"#DC2626",badge:"#EF4444",label:"OVERDUE"},
+  urgent: {bg:"#FFF7ED",border:"#FED7AA",text:"#C2410C",badge:"#F97316",label:"DUE SOON"},
+  soon:   {bg:"#FEFCE8",border:"#FDE68A",text:"#A16207",badge:"#EAB308",label:"UPCOMING"},
+  ok:     {bg:"#F0FDF4",border:"#BBF7D0",text:"#166534",badge:"#22C55E",label:"OK"},
+};
+const NAVY="#09152A",AQUA="#0EA5E9";
+
+function getServices(eq){
+  const cat=CAT[eq.type];if(!cat)return[];
+  const ls=eq.lastServiced||{};
+  if(eq.type==="softener"){
+    const iv=eq.installType==="commercial"?6:12;
+    const nV=addMo(ls.valve||eq.installDate,iv),nM=addMo(ls.media||eq.installDate,60);
+    const dV=dTo(nV),dM=dTo(nM);
+    return[
+      {key:"valve",label:`Valve & Brine Service (${eq.installType==="commercial"?"Commercial–6mo":"Domestic–12mo"})`,partCode:"SRV-VALVE-KIT",partDesc:"Valve & Brine Tank Service Kit",interval:iv,nextDate:nV,days:dV,status:stOf(dV)},
+      {key:"media",label:"Filter Media Replacement",partCode:"MEDIA-REPLACE",partDesc:"Filter Media Replacement (5 years)",interval:60,nextDate:nM,days:dM,status:stOf(dM)},
+    ];
+  }
+  const svcs=findModel(eq.type,eq.modelId)?.services||cat.services||[];
+  return svcs.map(s=>{const n=addMo(ls[s.key]||eq.installDate,s.interval);const d=dTo(n);return{...s,nextDate:n,days:d,status:stOf(d)};});
+}
+
+function lsGet(k){try{return localStorage.getItem(k)||"";}catch{return "";}}
+function lsSet(k,v){try{localStorage.setItem(k,v);}catch{}}
+function lsDel(k){try{localStorage.removeItem(k);}catch{}}
+async function apiCall(url,action,data={}){
+  const token=lsGet("aq_token");
+  const payload=token?{...data,token}:data;
+  const qs=new URLSearchParams({action});
+  if(Object.keys(payload).length)qs.set("data",JSON.stringify(payload));
+  const r=await fetch(`${url}?${qs}`,{redirect:"follow"});
+  return r.json();
+}
+
+function App(){
+  const [scriptUrl,setScriptUrl]=useState(()=>lsGet("aq_url"));
+  const [token,setToken]=useState(()=>lsGet("aq_token"));
+  const [installerName,setInstallerName]=useState(()=>lsGet("aq_installer"));
+  const [installerRole,setInstallerRole]=useState(()=>lsGet("aq_role"));
+  const [clients,setClients]=useState([]);
+  const [loading,setLoading]=useState(false);
+  const [tab,setTab]=useState("dashboard");
+  const [selectedId,setSelectedId]=useState(null);
+  const [showAdd,setShowAdd]=useState(false);
+  const [showSettings,setShowSettings]=useState(false);
+  const [toast,setToast]=useState(null);
+
+  function showToast(msg,err=false){setToast({msg,err});setTimeout(()=>setToast(null),3000);}
+
+  async function loadData(url=scriptUrl){
+    if(!url||!lsGet("aq_token"))return;
+    setLoading(true);
+    try{
+      const d=await apiCall(url,"getAll");
+      if(d?.ok===false){
+        // Session expired or bad token — force re-login
+        if(/session|log\s?in|auth/i.test(d.error||"")){logout(true);return;}
+        throw new Error(d.error||"Load failed");
+      }
+      if(d?.clients)setClients(d.clients.map(c=>({...c,equipment:Array.isArray(c.equipment)?c.equipment:[]})));
+      else throw new Error("No data");
+    }catch(e){showToast("⚠ "+(e.message||"Could not load data"),true);}
+    finally{setLoading(false);}
+  }
+
+  useEffect(()=>{if(scriptUrl&&token)loadData();},[scriptUrl,token]);
+
+  async function login(url,username,pin){
+    const r=await apiCall(url,"login",{username,pin});
+    if(!r?.ok)throw new Error(r?.error||"Login failed");
+    lsSet("aq_url",url);
+    lsSet("aq_token",r.token);
+    lsSet("aq_installer",r.displayName||r.username);
+    lsSet("aq_role",r.role||"installer");
+    setScriptUrl(url);setToken(r.token);
+    setInstallerName(r.displayName||r.username);setInstallerRole(r.role||"installer");
+    showToast(`✓ Welcome, ${r.displayName||r.username}`);
+  }
+
+  function logout(silent){
+    const url=scriptUrl,tk=lsGet("aq_token");
+    if(url&&tk)apiCall(url,"logout",{token:tk}).catch(()=>{});
+    lsDel("aq_token");lsDel("aq_installer");lsDel("aq_role");
+    setToken("");setInstallerName("");setInstallerRole("");
+    setClients([]);setSelectedId(null);setShowSettings(false);
+    if(!silent)showToast("Logged out");
+  }
+
+  async function addClient(data){
+    const id=uid();
+    setClients(p=>[...p,{...data,id,equipment:[]}]);
+    setShowAdd(false);setTab("clients");showToast("✓ Client added");
+    if(scriptUrl)apiCall(scriptUrl,"addClient",{...data,id}).catch(()=>{});
+  }
+  async function addEquipment(clientId,eq){
+    const id=uid();
+    setClients(p=>p.map(c=>c.id!==clientId?c:{...c,equipment:[...c.equipment,{...eq,id,lastServiced:{}}]}));
+    showToast("✓ Equipment added");
+    if(scriptUrl)apiCall(scriptUrl,"addEquipment",{...eq,id,clientId,addedBy:installerName}).catch(()=>{});
+  }
+  async function deleteEquipment(clientId,eqId){
+    setClients(p=>p.map(c=>c.id!==clientId?c:{...c,equipment:c.equipment.filter(e=>e.id!==eqId)}));
+    showToast("Equipment removed");
+    if(scriptUrl)apiCall(scriptUrl,"deleteEquipment",{id:eqId}).catch(()=>{});
+  }
+  async function markServiced(clientId,equipmentId,serviceKey){
+    const date=new Date().toISOString().split("T")[0];
+    setClients(p=>p.map(c=>c.id!==clientId?c:{...c,equipment:c.equipment.map(e=>e.id!==equipmentId?e:{...e,lastServiced:{...e.lastServiced,[serviceKey]:date}})}));
+    showToast("✓ Marked as serviced");
+    if(scriptUrl)apiCall(scriptUrl,"markServiced",{clientId,equipmentId,serviceKey,date}).catch(()=>{});
+  }
+  async function deleteClient(id){
+    setClients(p=>p.filter(c=>c.id!==id));setSelectedId(null);showToast("Client removed");
+    if(scriptUrl)apiCall(scriptUrl,"deleteClient",{id}).catch(()=>{});
+  }
+
+  const allAlerts=useMemo(()=>{
+    const a=[];
+    clients.forEach(c=>c.equipment?.forEach(eq=>getServices(eq).forEach(svc=>
+      a.push({...svc,clientId:c.id,clientName:c.name,clientAddress:c.address,equipmentId:eq.id,equipmentType:eq.type,equipmentModelId:eq.modelId})
+    )));
+    return a.sort((a,b)=>a.days-b.days);
+  },[clients]);
+
+  const urgentCount=allAlerts.filter(a=>a.status==="overdue"||a.status==="urgent").length;
+  const selected=clients.find(c=>c.id===selectedId);
+
+  if(!token)return <LoginScreen savedUrl={scriptUrl} onLogin={login}/>;
+  if(showSettings)return <SettingsScreen scriptUrl={scriptUrl} installerName={installerName} role={installerRole} onLogout={()=>logout(false)} onBack={()=>setShowSettings(false)}/>;
+  if(showAdd)return <AddClientForm onSave={addClient} onCancel={()=>setShowAdd(false)}/>;
+  if(selected)return <ClientDetail client={selected} alerts={allAlerts.filter(a=>a.clientId===selectedId)} onBack={()=>setSelectedId(null)} onMarkServiced={markServiced} onDelete={deleteClient} onAddEquipment={addEquipment} onDeleteEquipment={deleteEquipment}/>;
+
+  return (
+    <div style={{fontFamily:"'DM Sans',sans-serif",background:"#EFF6FF",minHeight:"100vh",maxWidth:430,margin:"0 auto"}}>
+      {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:toast.err?"#DC2626":"#1E293B",color:"white",padding:"10px 22px",borderRadius:24,fontSize:14,fontWeight:600,zIndex:9999,boxShadow:"0 4px 20px rgba(0,0,0,.3)",whiteSpace:"nowrap"}}>{toast.msg}</div>}
+      <TopBar tab={tab} urgentCount={urgentCount} installerName={installerName} role={installerRole} onSettings={()=>setShowSettings(true)} onRefresh={()=>loadData()}/>
+      <div style={{padding:"12px 16px 88px"}}>
+        {loading&&<Loader/>}
+        {!loading&&tab==="dashboard"&&<Dashboard alerts={allAlerts} clients={clients} onClientClick={setSelectedId} onMarkServiced={markServiced}/>}
+        {!loading&&tab==="clients"&&<ClientsList clients={clients} allAlerts={allAlerts} onClientClick={setSelectedId}/>}
+      </div>
+      <BottomNav tab={tab} setTab={setTab} onAdd={()=>setShowAdd(true)} urgentCount={urgentCount}/>
+    </div>
+  );
+}
+
+function TopBar({tab,urgentCount,installerName,role,onSettings,onRefresh}){
+  return(
+    <div style={{background:NAVY,padding:"16px 20px 20px",color:"white",overflow:"hidden",position:"relative"}}>
+      <div style={{position:"absolute",top:-20,right:-20,width:100,height:100,background:"rgba(14,165,233,.1)",borderRadius:"50%"}}/>
+      <div style={{position:"relative"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+          <div style={{fontSize:10,color:"#38BDF8",letterSpacing:3,textTransform:"uppercase",fontWeight:600}}>AquaServ Pro</div>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={onRefresh} style={{color:"#94A3B8",fontSize:16,border:"none",background:"none",cursor:"pointer"}}>↻</button>
+            <button onClick={onSettings} style={{color:"#94A3B8",fontSize:18,border:"none",background:"none",cursor:"pointer"}}>⚙</button>
+          </div>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{fontSize:24,fontWeight:700,fontFamily:"'Space Grotesk',sans-serif"}}>{tab==="dashboard"?"Dashboard":"All Clients"}</div>
+          {urgentCount>0&&<div style={{background:"#EF4444",color:"white",borderRadius:20,padding:"4px 14px",fontSize:12,fontWeight:700}}>{urgentCount} alert{urgentCount!==1?"s":""}</div>}
+        </div>
+        <div style={{fontSize:11,color:"#38BDF8",marginTop:4}}>👤 {installerName}{role==="admin"?" · ADMIN":""}</div>
+      </div>
+    </div>
+  );
+}
+
+function LoginScreen({savedUrl,onLogin}){
+  const [url,setUrl]=useState(savedUrl||"");
+  const [username,setUsername]=useState("");
+  const [pin,setPin]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState("");
+  const [showUrl,setShowUrl]=useState(!savedUrl);
+  async function submit(){
+    setErr("");setBusy(true);
+    try{await onLogin(url.trim(),username.trim(),pin.trim());}
+    catch(e){setErr(e.message||"Login failed");}
+    finally{setBusy(false);}
+  }
+  return(
+    <div style={{fontFamily:"'DM Sans',sans-serif",background:"#EFF6FF",minHeight:"100vh",maxWidth:430,margin:"0 auto"}}>
+      <div style={{background:NAVY,padding:"40px 20px 60px",color:"white",textAlign:"center"}}>
+        <div style={{fontSize:11,color:"#38BDF8",letterSpacing:3,textTransform:"uppercase",fontWeight:600,marginBottom:6}}>AquaServ Pro</div>
+        <div style={{fontSize:28,fontWeight:700,fontFamily:"'Space Grotesk',sans-serif"}}>Installer Sign-in</div>
+        <div style={{fontSize:13,color:"#94A3B8",marginTop:6}}>Enter your credentials to continue</div>
+      </div>
+      <div style={{padding:"20px 16px",marginTop:-30}}>
+        <div className="card" style={{background:"white",borderRadius:18,padding:20,boxShadow:"0 4px 20px rgba(0,0,0,.08)"}}>
+          {!showUrl&&savedUrl?
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,padding:"8px 12px",background:"#F0FDF4",borderRadius:10}}>
+              <div style={{fontSize:12,color:"#166534"}}>🟢 Connected</div>
+              <button onClick={()=>setShowUrl(true)} style={{fontSize:11,color:"#0EA5E9",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>change</button>
+            </div>
+            :<>
+              <Lbl>Apps Script Web App URL</Lbl>
+              <Inp value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://script.google.com/macros/s/..."/>
+              <div style={{fontSize:11,color:"#94A3B8",marginBottom:6}}>One-time setup — given to you by your administrator.</div>
+            </>
+          }
+          <Lbl>Username</Lbl>
+          <Inp value={username} onChange={e=>setUsername(e.target.value)} placeholder="e.g. john" autoCapitalize="none" autoCorrect="off"/>
+          <Lbl>PIN</Lbl>
+          <Inp type="password" inputMode="numeric" pattern="[0-9]*" maxLength={6} value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,""))} placeholder="4–6 digits"/>
+          {err&&<div style={{background:"#FEE2E2",color:"#DC2626",borderRadius:10,padding:"10px 12px",fontSize:13,marginTop:10,fontWeight:600}}>⚠ {err}</div>}
+          <button onClick={submit} disabled={busy||!url||!username||!pin} style={{width:"100%",padding:"14px",borderRadius:14,background:(busy||!url||!username||!pin)?"#CBD5E1":AQUA,color:"white",fontWeight:700,fontSize:15,border:"none",cursor:busy?"default":"pointer",marginTop:14}}>{busy?"Signing in…":"Sign in →"}</button>
+        </div>
+        <div style={{fontSize:11,color:"#94A3B8",textAlign:"center",marginTop:14,lineHeight:1.6}}>
+          Installer accounts are managed in the Google Sheet's<br/><strong>Installers</strong> tab by your administrator.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SettingsScreen({scriptUrl,installerName,role,onLogout,onBack}){
+  return(
+    <div style={{fontFamily:"'DM Sans',sans-serif",background:"#EFF6FF",minHeight:"100vh",maxWidth:430,margin:"0 auto"}}>
+      <div style={{background:NAVY,padding:"20px 20px 28px",color:"white"}}>
+        <button onClick={onBack} style={{color:"#38BDF8",fontSize:14,fontWeight:600,marginBottom:12,border:"none",background:"none",cursor:"pointer"}}>‹ Back</button>
+        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:22,fontWeight:700}}>⚙ Settings</div>
+      </div>
+      <div style={{padding:"20px 16px"}}>
+        <div style={{background:"white",borderRadius:14,padding:16,marginBottom:14,boxShadow:"0 1px 8px rgba(0,0,0,.06)"}}>
+          <div style={{fontSize:11,color:"#94A3B8",fontWeight:600,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>Signed in as</div>
+          <div style={{fontSize:18,fontWeight:700,color:"#0F172A"}}>{installerName||"—"}</div>
+          <div style={{fontSize:12,color:role==="admin"?"#7C3AED":"#64748B",marginTop:2,fontWeight:600}}>{role==="admin"?"Administrator · all clients":"Installer · own clients only"}</div>
+        </div>
+        <div style={{background:"#EFF6FF",borderRadius:14,padding:14,marginBottom:14,fontSize:12,color:"#1D4ED8",lineHeight:1.6}}>
+          <div style={{fontWeight:700,marginBottom:4}}>📋 Account management</div>
+          To add or remove installers, open the Google Sheet and edit the <strong>Installers</strong> tab. Set <code>active</code> to <code>FALSE</code> to disable an account.
+        </div>
+        <div style={{background:"white",borderRadius:14,padding:14,marginBottom:14,boxShadow:"0 1px 8px rgba(0,0,0,.06)",wordBreak:"break-all"}}>
+          <div style={{fontSize:11,color:"#94A3B8",fontWeight:600,textTransform:"uppercase",letterSpacing:.8,marginBottom:4}}>Connected to</div>
+          <div style={{fontSize:11,color:"#64748B",fontFamily:"monospace"}}>{scriptUrl||"—"}</div>
+        </div>
+        <button onClick={onLogout} style={{width:"100%",padding:"14px",borderRadius:14,background:"#FEE2E2",color:"#DC2626",fontWeight:700,fontSize:15,border:"none",cursor:"pointer"}}>Sign out</button>
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({alerts,clients,onClientClick,onMarkServiced}){
+  const overdue=alerts.filter(a=>a.status==="overdue");
+  const urgent=alerts.filter(a=>a.status==="urgent");
+  const soon=alerts.filter(a=>a.status==="soon");
+  const shown=[...overdue,...urgent,...soon];
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+        {[{l:"Clients",v:clients.length,c:AQUA},{l:"Overdue",v:overdue.length,c:"#EF4444"},{l:"Due ≤14d",v:urgent.length,c:"#F97316"}].map(s=>(
+          <div key={s.l} className="card" style={{background:"white",borderRadius:14,padding:"14px 8px",textAlign:"center",boxShadow:"0 1px 8px rgba(0,0,0,.06)"}}>
+            <div style={{fontSize:26,fontWeight:700,color:s.c,fontFamily:"'Space Grotesk',sans-serif"}}>{s.v}</div>
+            <div style={{fontSize:11,color:"#94A3B8",fontWeight:600,marginTop:2}}>{s.l}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{fontWeight:700,fontSize:15,color:"#1E293B"}}>{shown.length?"Service Alerts":"All services up to date ✓"}</div>
+      {!shown.length&&<div style={{textAlign:"center",padding:"32px 20px",color:"#94A3B8"}}><div style={{fontSize:48,marginBottom:8}}>✓</div><div style={{fontWeight:600}}>All systems serviced</div><div style={{fontSize:13,marginTop:4}}>No alerts in the next 90 days</div></div>}
+      {shown.map((al,i)=>{
+        const st=ST[al.status],cat=CAT[al.equipmentType],model=findModel(al.equipmentType,al.equipmentModelId);
+        return(
+          <div key={`${al.clientId}-${al.equipmentId}-${al.key}`} className="card" style={{background:"white",borderRadius:16,overflow:"hidden",boxShadow:"0 1px 8px rgba(0,0,0,.06)",borderLeft:`4px solid ${st.badge}`,animationDelay:`${i*.04}s`}}>
+            <div style={{padding:"14px 14px 12px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,cursor:"pointer"}} onClick={()=>onClientClick(al.clientId)}>
+                <div><div style={{fontWeight:700,fontSize:15,color:"#0F172A"}}>{al.clientName}</div><div style={{fontSize:12,color:"#64748B",marginTop:1}}>{al.clientAddress}</div></div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{background:st.badge,color:"white",fontSize:10,fontWeight:700,borderRadius:8,padding:"3px 8px"}}>{st.label}</span><span style={{color:"#CBD5E1"}}>›</span></div>
+              </div>
+              <div style={{background:"#F8FAFC",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}><span style={{fontSize:14}}>{cat?.icon}</span><span style={{fontWeight:600,fontSize:13,color:"#334155"}}>{model?.name||"Unit"}</span><span style={{fontSize:11,color:"#94A3B8"}}>· {al.label}</span></div>
+                    {al.partCode!=="—"&&<div style={{fontSize:11,color:"#94A3B8"}}>Part#: <span style={{fontFamily:"monospace",fontWeight:600,color:"#475569"}}>{al.partCode}</span></div>}
+                    {al.note&&<div style={{fontSize:11,color:"#F97316",marginTop:2}}>ℹ {al.note}</div>}
+                    <div style={{fontSize:11,color:"#94A3B8",marginTop:2}}>Due: {fmt(al.nextDate)}</div>
+                  </div>
+                  <div style={{textAlign:"right",marginLeft:10}}>
+                    <div style={{fontWeight:700,fontSize:18,color:st.text}}>{al.days<0?`${Math.abs(al.days)}d`:al.days===0?"Today":`${al.days}d`}</div>
+                    <div style={{fontSize:10,color:st.text,fontWeight:600}}>{al.days<0?"overdue":"left"}</div>
+                  </div>
+                </div>
+              </div>
+              <button onClick={()=>onMarkServiced(al.clientId,al.equipmentId,al.key)} style={{width:"100%",padding:"11px",borderRadius:12,background:cat?.color||AQUA,color:"white",fontWeight:700,fontSize:14,border:"none",cursor:"pointer"}}>✓ Mark as Serviced</button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ClientsList({clients,allAlerts,onClientClick}){
+  const [q,setQ]=useState("");
+  const filtered=clients.filter(c=>c.name?.toLowerCase().includes(q.toLowerCase())||c.address?.toLowerCase().includes(q.toLowerCase())||c.phone?.includes(q));
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      <div style={{position:"relative"}}>
+        <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:"#94A3B8"}}>🔍</span>
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by name, address or phone…" style={{width:"100%",padding:"12px 14px 12px 40px",background:"white",border:"1px solid #E2E8F0",borderRadius:14,fontSize:14,color:"#1E293B",outline:"none",fontFamily:"inherit"}}/>
+      </div>
+      {filtered.map((c,i)=>{
+        const ca=allAlerts.filter(a=>a.clientId===c.id);
+        const n=ca.filter(a=>a.status==="overdue"||a.status==="urgent").length;
+        const w=ca.find(a=>a.status==="overdue")?"overdue":ca.find(a=>a.status==="urgent")?"urgent":ca.find(a=>a.status==="soon")?"soon":"ok";
+        return(
+          <div key={c.id} className="card" onClick={()=>onClientClick(c.id)} style={{background:"white",borderRadius:16,padding:16,boxShadow:"0 1px 8px rgba(0,0,0,.06)",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",animationDelay:`${i*.04}s`}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:16,color:"#0F172A"}}>{c.name}</div>
+              <div style={{fontSize:12,color:"#64748B",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.address}</div>
+              <div style={{display:"flex",gap:5,marginTop:8,flexWrap:"wrap"}}>
+                {c.equipment?.map(eq=>{const cat=CAT[eq.type];const m=findModel(eq.type,eq.modelId);return cat?<span key={eq.id} style={{background:cat.light,color:cat.color,fontSize:10,fontWeight:600,padding:"3px 8px",borderRadius:8}}>{cat.icon} {m?.name||"Unit"}</span>:null;})}
+              </div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,marginLeft:12}}>
+              {n>0&&<div style={{background:ST[w].badge,color:"white",fontSize:11,fontWeight:700,borderRadius:10,padding:"2px 8px"}}>{n} alert{n!==1?"s":""}</div>}
+              <span style={{color:"#CBD5E1",fontSize:20}}>›</span>
+            </div>
+          </div>
+        );
+      })}
+      {!filtered.length&&q&&<div style={{textAlign:"center",padding:"32px",color:"#94A3B8",fontSize:14}}>No results for "{q}"</div>}
+    </div>
+  );
+}
+
+function ClientDetail({client,alerts,onBack,onMarkServiced,onDelete,onAddEquipment,onDeleteEquipment}){
+  const [showAddEq,setShowAddEq]=useState(false);
+  const [confirmDel,setConfirmDel]=useState(false);
+  return(
+    <div style={{fontFamily:"'DM Sans',sans-serif",background:"#EFF6FF",minHeight:"100vh",maxWidth:430,margin:"0 auto"}}>
+      <div style={{background:NAVY,padding:"18px 20px 24px",color:"white"}}>
+        <button onClick={onBack} style={{color:"#38BDF8",fontSize:14,fontWeight:600,marginBottom:12,border:"none",background:"none",cursor:"pointer"}}>‹ Back</button>
+        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:22,fontWeight:700}}>{client.name}</div>
+        <div style={{fontSize:13,color:"#94A3B8",marginTop:3}}>{client.address}</div>
+        <div style={{display:"flex",gap:10,marginTop:14,flexWrap:"wrap"}}>
+          {client.phone&&<a href={`tel:${client.phone}`} style={{background:AQUA,color:"white",padding:"8px 16px",borderRadius:24,fontSize:13,fontWeight:600,textDecoration:"none"}}>📞 Call</a>}
+          {client.phone&&<a href={`sms:${client.phone}`} style={{background:"rgba(255,255,255,.1)",color:"white",padding:"8px 16px",borderRadius:24,fontSize:13,fontWeight:600,textDecoration:"none"}}>💬 SMS</a>}
+        </div>
+      </div>
+      <div style={{padding:"16px 16px 100px",display:"flex",flexDirection:"column",gap:14}}>
+        {(client.phone||client.notes)&&(
+          <div style={{background:"white",borderRadius:16,padding:16,boxShadow:"0 1px 8px rgba(0,0,0,.06)"}}>
+            <div style={{fontWeight:700,fontSize:12,color:"#64748B",marginBottom:10,textTransform:"uppercase",letterSpacing:1}}>Contact Info</div>
+            {client.phone&&<IR label="Phone" val={client.phone}/>}
+            {client.notes&&<IR label="Notes" val={client.notes}/>}
+          </div>
+        )}
+        <div style={{fontWeight:700,fontSize:15,color:"#1E293B"}}>Installed Equipment</div>
+        {!client.equipment?.length&&<div style={{textAlign:"center",padding:"24px",color:"#94A3B8",fontSize:13}}>No equipment yet — add below</div>}
+        {client.equipment?.map(eq=>{
+          const cat=CAT[eq.type],model=findModel(eq.type,eq.modelId);if(!cat)return null;
+          const services=getServices(eq);
+          return(
+            <div key={eq.id} style={{background:"white",borderRadius:16,overflow:"hidden",boxShadow:"0 1px 8px rgba(0,0,0,.06)"}}>
+              <div style={{background:cat.color,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:18}}>{cat.icon}</span>
+                  <div>
+                    <div style={{color:"white",fontWeight:700,fontSize:15}}>{model?.name||"Unit"}</div>
+                    <div style={{color:"rgba(255,255,255,.7)",fontSize:11}}>Installed: {fmt(eq.installDate)} · <span style={{fontFamily:"monospace"}}>{model?.unitCode||"—"}</span>{eq.installType?` · ${eq.installType}`:""}</div>
+                  </div>
+                </div>
+                <button onClick={()=>onDeleteEquipment(client.id,eq.id)} style={{color:"rgba(255,255,255,.6)",fontSize:20,padding:"4px 8px",lineHeight:1,border:"none",background:"none",cursor:"pointer"}}>✕</button>
+              </div>
+              <div style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+                {services.map(svc=>{
+                  const st=ST[svc.status];
+                  return(
+                    <div key={svc.key} style={{background:st.bg,border:`1px solid ${st.border}`,borderRadius:12,padding:12}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:700,fontSize:13,color:"#1E293B"}}>{svc.label}</div>
+                          <div style={{fontSize:11,color:"#64748B",marginTop:2}}>{svc.partDesc}</div>
+                          {svc.partCode!=="—"&&<div style={{fontSize:11,color:"#64748B"}}>Part#: <span style={{fontFamily:"monospace",fontWeight:600,color:"#475569"}}>{svc.partCode}</span></div>}
+                          <div style={{fontSize:11,color:"#64748B",marginTop:2}}>Due: {fmt(svc.nextDate)} · Every {svc.interval}mo</div>
+                          {svc.note&&<div style={{fontSize:11,color:"#F97316",marginTop:2}}>ℹ {svc.note}</div>}
+                        </div>
+                        <div style={{textAlign:"right",marginLeft:12}}>
+                          <div style={{fontWeight:700,fontSize:18,color:st.text}}>{svc.days<0?`${Math.abs(svc.days)}d ago`:svc.days===0?"Today":`${svc.days}d`}</div>
+                          <div style={{fontSize:10,color:st.text,fontWeight:600}}>{st.label}</div>
+                        </div>
+                      </div>
+                      <button onClick={()=>onMarkServiced(client.id,eq.id,svc.key)} style={{width:"100%",padding:"11px",borderRadius:10,background:(svc.status==="overdue"||svc.status==="urgent")?cat.color:"transparent",color:(svc.status==="overdue"||svc.status==="urgent")?"white":cat.color,fontWeight:700,fontSize:13,border:`2px solid ${cat.color}`,cursor:"pointer"}}>✓ Mark as Serviced</button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+        {showAddEq
+          ?<AddEquipmentForm onSave={eq=>{onAddEquipment(client.id,eq);setShowAddEq(false);}} onCancel={()=>setShowAddEq(false)}/>
+          :<button onClick={()=>setShowAddEq(true)} style={{border:"2px dashed #CBD5E1",borderRadius:16,padding:16,width:"100%",color:"#64748B",fontSize:14,fontWeight:600,background:"white",cursor:"pointer"}}>+ Add Equipment</button>
+        }
+        {!confirmDel
+          ?<button onClick={()=>setConfirmDel(true)} style={{color:"#EF4444",fontSize:13,fontWeight:600,padding:8,border:"none",background:"none",cursor:"pointer"}}>Delete Client</button>
+          :<div style={{background:"#FEE2E2",borderRadius:16,padding:16,textAlign:"center"}}>
+            <div style={{fontWeight:700,color:"#DC2626",marginBottom:10}}>Delete {client.name}?</div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setConfirmDel(false)} style={{flex:1,padding:"10px",borderRadius:10,background:"#F1F5F9",fontWeight:600,color:"#475569",border:"none",cursor:"pointer"}}>Cancel</button>
+              <button onClick={()=>onDelete(client.id)} style={{flex:1,padding:"10px",borderRadius:10,background:"#EF4444",fontWeight:700,color:"white",border:"none",cursor:"pointer"}}>Delete</button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  );
+}
+
+function AddClientForm({onSave,onCancel}){
+  const [step,setStep]=useState(1);
+  const [name,setName]=useState(""), [phone,setPhone]=useState(""), [address,setAddress]=useState(""), [notes,setNotes]=useState("");
+  const [equipment,setEquipment]=useState([]);
+  const [addingEq,setAddingEq]=useState(false);
+  return(
+    <div style={{fontFamily:"'DM Sans',sans-serif",background:"#EFF6FF",minHeight:"100vh",maxWidth:430,margin:"0 auto"}}>
+      <div style={{background:NAVY,padding:"18px 20px 24px",color:"white"}}>
+        <button onClick={onCancel} style={{color:"#38BDF8",fontSize:14,fontWeight:600,marginBottom:12,border:"none",background:"none",cursor:"pointer"}}>✕ Cancel</button>
+        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:22,fontWeight:700}}>New Client</div>
+        <div style={{display:"flex",gap:8,marginTop:14}}>{[1,2].map(s=><div key={s} style={{height:4,flex:1,borderRadius:2,background:step>=s?AQUA:"rgba(255,255,255,.2)"}}/>)}</div>
+        <div style={{fontSize:12,color:"#94A3B8",marginTop:8}}>Step {step} of 2 · {step===1?"Contact Info":"Equipment"}</div>
+      </div>
+      <div style={{padding:"20px 16px 100px"}}>
+        {step===1&&<>
+          <Lbl>Full Name *</Lbl><Inp value={name} onChange={e=>setName(e.target.value)} placeholder="John Smith"/>
+          <Lbl>Phone</Lbl><Inp value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+353 87 000 0000" type="tel"/>
+          <Lbl>Address *</Lbl><Inp value={address} onChange={e=>setAddress(e.target.value)} placeholder="12 Main St, Dublin"/>
+          <Lbl>Notes</Lbl>
+          <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Gate codes, access info…" style={{width:"100%",padding:"12px 14px",background:"white",border:"1.5px solid #E2E8F0",borderRadius:12,fontSize:14,color:"#1E293B",minHeight:70,resize:"vertical",marginBottom:16,fontFamily:"inherit",outline:"none"}}/>
+          <button onClick={()=>setStep(2)} disabled={!name||!address} style={{width:"100%",padding:"14px",borderRadius:14,background:(!name||!address)?"#CBD5E1":AQUA,color:"white",fontWeight:700,fontSize:15,border:"none",cursor:(!name||!address)?"default":"pointer"}}>Next: Add Equipment →</button>
+        </>}
+        {step===2&&<>
+          {equipment.map(eq=>{const cat=CAT[eq.type];const m=findModel(eq.type,eq.modelId);return cat?<div key={eq.id} style={{background:"white",borderRadius:14,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:"0 1px 6px rgba(0,0,0,.06)",marginBottom:10}}>
+            <div><div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:16}}>{cat.icon}</span><span style={{fontWeight:700,fontSize:14,color:"#1E293B"}}>{m?.name}</span></div><div style={{fontSize:12,color:"#94A3B8",marginTop:2}}>{fmt(eq.installDate)}{eq.installType?` · ${eq.installType}`:""}</div></div>
+            <button onClick={()=>setEquipment(p=>p.filter(e=>e.id!==eq.id))} style={{color:"#EF4444",fontSize:18,padding:"4px 8px",border:"none",background:"none",cursor:"pointer"}}>✕</button>
+          </div>:null;})}
+          {addingEq
+            ?<AddEquipmentForm onSave={eq=>{setEquipment(p=>[...p,{...eq,id:uid()}]);setAddingEq(false);}} onCancel={()=>setAddingEq(false)}/>
+            :<button onClick={()=>setAddingEq(true)} style={{border:"2px dashed #CBD5E1",borderRadius:14,padding:14,width:"100%",color:"#64748B",fontSize:14,fontWeight:600,background:"white",marginBottom:14,cursor:"pointer"}}>+ Add Equipment</button>
+          }
+          <div style={{display:"flex",gap:10,marginTop:8}}>
+            <button onClick={()=>setStep(1)} style={{flex:1,padding:"14px",borderRadius:14,background:"#F1F5F9",fontWeight:700,color:"#475569",fontSize:15,border:"none",cursor:"pointer"}}>← Back</button>
+            <button onClick={()=>onSave({name,phone,address,notes,equipment})} style={{flex:2,padding:"14px",borderRadius:14,background:AQUA,fontWeight:700,color:"white",fontSize:15,border:"none",cursor:"pointer"}}>Save Client ✓</button>
+          </div>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+function AddEquipmentForm({onSave,onCancel}){
+  const types=Object.keys(CAT);
+  const [type,setType]=useState("uv");
+  const [groupIdx,setGroupIdx]=useState(0);
+  const [modelId,setModelId]=useState(CAT.uv.models[0].id);
+  const [installDate,setInstallDate]=useState(new Date().toISOString().split("T")[0]);
+  const [installType,setInstallType]=useState("domestic");
+  const cat=CAT[type];
+  const hasGroups=!!cat.groups;
+  function getGMs(c,gi){if(!c.groups)return c.models;const g=c.groups[gi];if(g?.models)return g.models;return(g?.sizes||[]).map(s=>({id:`${g.k}_${s}`,name:`${g.g} ${s}`,unitCode:`SOFT-${g.k.toUpperCase()}-${s}`}));}
+  function changeType(t){setType(t);setGroupIdx(0);setModelId(getGMs(CAT[t],0)[0]?.id||"");}
+  function changeGroup(gi){setGroupIdx(gi);setModelId(getGMs(cat,gi)[0]?.id||"");}
+  const gms=getGMs(cat,groupIdx);
+  const model=cat.models.find(m=>m.id===modelId)||gms[0];
+  const svcs=model?.services||cat.services||[];
+  return(
+    <div style={{background:"white",borderRadius:16,padding:16,boxShadow:"0 1px 8px rgba(0,0,0,.06)"}}>
+      <div style={{fontWeight:700,fontSize:15,color:"#1E293B",marginBottom:14}}>Add Equipment</div>
+      <Lbl>Equipment Type</Lbl>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+        {types.map(t=>{const c=CAT[t];return<button key={t} onClick={()=>changeType(t)} style={{padding:"10px 6px",borderRadius:12,fontSize:11,fontWeight:600,border:`2px solid ${type===t?c.color:"#E2E8F0"}`,background:type===t?c.light:"white",color:type===t?c.color:"#94A3B8",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer"}}><span style={{fontSize:18}}>{c.icon}</span><span>{c.label}</span></button>;})}
+      </div>
+      {hasGroups&&<><Lbl>Series</Lbl><Sel value={groupIdx} onChange={e=>changeGroup(Number(e.target.value))}>{cat.groups.map((g,i)=><option key={i} value={i}>{g.g}</option>)}</Sel></>}
+      <Lbl>Model</Lbl>
+      <Sel value={modelId} onChange={e=>setModelId(e.target.value)}>{gms.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</Sel>
+      {model&&<div style={{background:"#F8FAFC",borderRadius:10,padding:"10px 12px",marginBottom:12,marginTop:4}}>
+        <div style={{fontSize:11,color:"#64748B",marginBottom:4}}>Unit code: <span style={{fontFamily:"monospace",fontWeight:600,color:"#1E293B"}}>{model.unitCode||"—"}</span></div>
+        {svcs.map(s=><div key={s.key} style={{fontSize:11,color:"#64748B"}}>→ {s.label} · <span style={{fontFamily:"monospace",fontWeight:600,color:"#1E293B"}}>{s.partCode}</span> · every {s.interval}mo</div>)}
+        {type==="softener"&&<><div style={{fontSize:11,color:"#64748B"}}>→ Valve: Domestic 12mo / Commercial 6mo</div><div style={{fontSize:11,color:"#64748B"}}>→ Media replacement: every 60mo (5 years)</div></>}
+      </div>}
+      {type==="softener"&&<>
+        <Lbl>Installation Type</Lbl>
+        <div style={{display:"flex",gap:8,marginBottom:4}}>
+          {["domestic","commercial"].map(t=><button key={t} onClick={()=>setInstallType(t)} style={{flex:1,padding:"10px",borderRadius:10,fontSize:13,fontWeight:600,border:`2px solid ${installType===t?"#059669":"#E2E8F0"}`,background:installType===t?"#F0FDF4":"white",color:installType===t?"#059669":"#94A3B8",cursor:"pointer"}}>{t==="domestic"?"🏠 Domestic (12mo)":"🏢 Commercial (6mo)"}</button>)}
+        </div>
+      </>}
+      <Lbl>Installation Date</Lbl>
+      <Inp type="date" value={installDate} onChange={e=>setInstallDate(e.target.value)}/>
+      <div style={{display:"flex",gap:10,marginTop:8}}>
+        <button onClick={onCancel} style={{flex:1,padding:"12px",borderRadius:12,background:"#F1F5F9",fontWeight:600,color:"#475569",fontSize:14,border:"none",cursor:"pointer"}}>Cancel</button>
+        <button onClick={()=>{const m=cat.models.find(m=>m.id===modelId)||gms[0];onSave({type,modelId:m?.id,modelName:m?.name,unitCode:m?.unitCode,installDate,installType:type==="softener"?installType:undefined});}} style={{flex:2,padding:"12px",borderRadius:12,background:AQUA,fontWeight:700,color:"white",fontSize:14,border:"none",cursor:"pointer"}}>Add Equipment</button>
+      </div>
+    </div>
+  );
+}
+
+function BottomNav({tab,setTab,onAdd,urgentCount}){
+  return(
+    <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"white",borderTop:"1px solid #E2E8F0",display:"flex",alignItems:"center",padding:"6px 0 18px",zIndex:100}}>
+      {[
+        {id:"dashboard",label:"Dashboard",ico:a=><svg width="22" height="22" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2" fill={a?AQUA:"#CBD5E1"}/><rect x="13" y="3" width="8" height="8" rx="2" fill={a?AQUA:"#CBD5E1"}/><rect x="3" y="13" width="8" height="8" rx="2" fill={a?AQUA:"#CBD5E1"}/><rect x="13" y="13" width="8" height="8" rx="2" fill={a?AQUA:"#CBD5E1"}/></svg>},
+        {id:"clients",label:"Clients",ico:a=><svg width="22" height="22" fill="none" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" fill={a?AQUA:"#CBD5E1"}/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" stroke={a?AQUA:"#CBD5E1"} strokeWidth="2" strokeLinecap="round"/><circle cx="18" cy="8" r="3" fill={a?AQUA:"#CBD5E1"}/></svg>},
+      ].map(t=>(
+        <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,border:"none",background:"none",cursor:"pointer"}}>
+          {t.ico(tab===t.id)}<span style={{fontSize:11,fontWeight:600,color:tab===t.id?AQUA:"#94A3B8"}}>{t.label}</span>
+        </button>
+      ))}
+      <button onClick={onAdd} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,border:"none",background:"none",cursor:"pointer"}}>
+        <div style={{width:40,height:40,background:`linear-gradient(135deg,${AQUA},#0369A1)`,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontSize:24,marginTop:-14,boxShadow:"0 4px 12px rgba(14,165,233,.4)"}}>+</div>
+        <span style={{fontSize:11,fontWeight:600,color:"#94A3B8"}}>Add Client</span>
+      </button>
+    </div>
+  );
+}
+
+function Lbl({children}){return <div style={{fontSize:12,fontWeight:600,color:"#64748B",textTransform:"uppercase",letterSpacing:.8,marginBottom:6,marginTop:12}}>{children}</div>;}
+function Inp(p){return <input {...p} style={{width:"100%",padding:"12px 14px",background:"white",border:"1.5px solid #E2E8F0",borderRadius:12,fontSize:14,color:"#1E293B",marginBottom:4,outline:"none",fontFamily:"inherit",...(p.style||{})}}/>;}
+function Sel({children,...p}){return <select {...p} style={{width:"100%",padding:"12px 14px",background:"white",border:"1.5px solid #E2E8F0",borderRadius:12,fontSize:14,color:"#1E293B",marginBottom:4,appearance:"none",outline:"none",fontFamily:"inherit"}}>{children}</select>;}
+function IR({label,val}){return <div style={{display:"flex",gap:10,marginBottom:6}}><span style={{fontSize:12,color:"#94A3B8",fontWeight:600,minWidth:52}}>{label}</span><span style={{fontSize:13,color:"#334155"}}>{val}</span></div>;}
+function Loader(){return <div style={{textAlign:"center",padding:"48px",color:"#94A3B8",fontSize:14,fontWeight:600}}>↻ Loading from Google Sheets…</div>;}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+</body>
+</html>
